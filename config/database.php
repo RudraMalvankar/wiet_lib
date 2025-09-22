@@ -24,14 +24,13 @@ class Database {
     
     private function connect() {
         try {
-            $this->connection = new mysqli($this->host, $this->username, $this->password, $this->database);
-            
-            if ($this->connection->connect_error) {
-                throw new Exception("Connection failed: " . $this->connection->connect_error);
-            }
-            
-            $this->connection->set_charset("utf8");
-        } catch (Exception $e) {
+            $dsn = "mysql:host={$this->host};dbname={$this->database};charset=utf8mb4";
+            $this->connection = new PDO($dsn, $this->username, $this->password, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false
+            ]);
+        } catch (PDOException $e) {
             die("Database connection failed: " . $e->getMessage());
         }
     }
@@ -41,9 +40,7 @@ class Database {
     }
     
     public function closeConnection() {
-        if ($this->connection) {
-            $this->connection->close();
-        }
+        $this->connection = null;
     }
     
     // Execute query
@@ -58,12 +55,28 @@ class Database {
     
     // Get last inserted ID
     public function lastInsertId() {
-        return $this->connection->insert_id;
+        return $this->connection->lastInsertId();
     }
     
-    // Escape string
-    public function escape($string) {
-        return $this->connection->real_escape_string($string);
+    // Execute and return single result
+    public function fetchRow($sql, $params = []) {
+        $stmt = $this->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch();
+    }
+    
+    // Execute and return all results
+    public function fetchAll($sql, $params = []) {
+        $stmt = $this->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+    
+    // Execute statement and return affected rows
+    public function execute($sql, $params = []) {
+        $stmt = $this->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->rowCount();
     }
 }
 
